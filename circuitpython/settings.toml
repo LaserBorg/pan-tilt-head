@@ -1,0 +1,32 @@
+# ULN2003:
+stepper_resolution = 5.66079561042524
+
+# Pan:
+pan_pin_1 = 10
+pan_pin_2 = 11
+pan_pin_3 = 12
+pan_pin_4 = 13
+pan_halfstep = true
+pan_reverse = false
+pan_ratio = 2.7857142857  # gear ratio: 39/14
+pan_button = 18
+pan_button_invert = false
+
+# Tilt:
+tilt_pin_1 = 6
+tilt_pin_2 = 7
+tilt_pin_3 = 8
+tilt_pin_4 = 9
+tilt_halfstep = true
+tilt_reverse = true
+tilt_ratio = 5.95238095238  # gear ratio: 375/63
+tilt_button = 17
+tilt_button_invert = false
+
+# limits:
+move_delay_halfstep_ms = 1
+move_delay_fullstep_ms = 2
+pan_min = -90
+pan_max = 135
+tilt_min = -85
+tilt_max = 90
