@@ -1,3 +1,7 @@
+# WIFI:
+WIFI_SSID=<SSID>
+WIFI_PASSWORD=<PASSWORD>
+
 # ULN2003:
 stepper_resolution = 5.66079561042524
 

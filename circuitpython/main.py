@@ -1,3 +1,4 @@
+import os
 import time
 
 import mdns  # type: ignore[reportMissingImports]
@@ -7,9 +8,9 @@ from adafruit_httpserver import Server  # type: ignore[reportMissingImports]
 
 import rest_api
 from pan_tilt import Abort, PanTiltHead
-from secrets import WIFI_PASSWORD, WIFI_SSID
 
 PORT = 8080
+JOG_TIMEOUT = 1.0
 
 
 class Runner:
@@ -22,6 +23,9 @@ class Runner:
         self.running = False
         self.abort = False
         self.error = None
+        self.jogging = False
+        self.jog_values = (0.0, 0.0)
+        self.jog_deadline = 0.0
 
     @property
     def busy(self):
@@ -31,8 +35,22 @@ class Runner:
         self.error = None
         self.job = job
 
+    def set_jog(self, pan, tilt):
+        self.jog_values = (pan, tilt)
+        self.jog_deadline = time.monotonic() + JOG_TIMEOUT
+        if not self.jogging and (pan or tilt):
+            self.jogging = True
+            self.submit(lambda: self.head.jog(self.read_jog))
+
+    def read_jog(self):
+        if time.monotonic() >= self.jog_deadline:
+            return (0.0, 0.0)
+        return self.jog_values
+
     def stop(self):
         self.job = None
+        self.jogging = False
+        self.jog_values = (0.0, 0.0)
         if self.running:
             self.abort = True
         else:
@@ -63,12 +81,14 @@ class Runner:
             self.error = str(error)
         self.running = False
         self.abort = False
+        self.jogging = False
+        self.jog_values = (0.0, 0.0)
 
 
 def connect_wifi():
     while not wifi.radio.connected:
         try:
-            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+            wifi.radio.connect(os.getenv("WIFI_SSID"), os.getenv("WIFI_PASSWORD"))
         except ConnectionError:
             time.sleep(2)
 

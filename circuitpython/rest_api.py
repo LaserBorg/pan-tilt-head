@@ -72,6 +72,24 @@ def register(server, head, runner):
         runner.submit(lambda: head.home(axis))
         return reply(request, ACCEPTED)
 
+    @server.route("/api/v1/jog", POST)
+    def post_jog(request):
+        if runner.busy and not runner.jogging:
+            return reply(request, CONFLICT, "busy")
+        try:
+            body = _body(request)
+            if set(body) != {"pan", "tilt"}:
+                raise ValueError("pan and tilt required")
+            pan, tilt = _angle(body, "pan"), _angle(body, "tilt")
+            if pan is None or tilt is None or abs(pan) > 1 or abs(tilt) > 1:
+                raise ValueError("pan and tilt must be between -1 and 1")
+            if (pan or tilt) and (not head.pan.homed or not head.tilt.homed):
+                raise ValueError("both axes must be homed before jogging")
+        except ValueError as error:
+            return reply(request, BAD_REQUEST, str(error))
+        runner.set_jog(pan, tilt)
+        return reply(request, ACCEPTED)
+
     @server.route("/api/v1/disable", POST)
     def post_disable(request):
         runner.stop()

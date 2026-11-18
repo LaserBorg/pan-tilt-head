@@ -118,6 +118,36 @@ class PanTiltHead:
         tilt.homed = True
         return True
 
+    def jog(self, read_velocity):
+        axes = (self.pan, self.tilt)
+        delay = max(axis.delay for axis in axes)
+        pulses_per_degree = [axis.motor.steps_per_degree * axis.motor.step_factor for axis in axes]
+        max_speed = min(1.0 / (delay * pulses) for pulses in pulses_per_degree)
+        credits = [0.0, 0.0]
+        previous = [0, 0]
+        interval = ticks_every(delay)
+        count = 0
+        while True:
+            velocities = read_velocity()
+            if not any(velocities):
+                break
+            for index, (axis, velocity) in enumerate(zip(axes, velocities)):
+                sign = (velocity > 0) - (velocity < 0)
+                if sign != previous[index]:
+                    credits[index] = 0.0
+                    previous[index] = sign
+                credits[index] += abs(velocity) * max_speed * pulses_per_degree[index] * delay
+                if credits[index] >= 1.0:
+                    credits[index] -= 1.0
+                    next_angle = axis.angle + sign / pulses_per_degree[index]
+                    if axis.min <= next_angle <= axis.max:
+                        axis.motor.pulse(sign * axis.direction)
+                        axis.angle = next_angle
+            time.sleep(delay)
+            count += 1
+            if self.tick is not None and count % interval == 0:
+                self.tick()
+
     def move_to(self, pan=None, tilt=None):
         """Move homed axes to absolute angles (clamped to limits), finishing together."""
         moves = []

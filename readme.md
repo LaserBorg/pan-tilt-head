@@ -32,8 +32,7 @@ or MQTT control.
 | `circuitpython/pan_tilt.py` | per-axis settings, homing, coordinated moves |
 | `circuitpython/rest_api.py` | HTTP routes: validate input and queue work |
 | `circuitpython/main.py` | Wi-Fi, mDNS, HTTP server, job runner and main loop |
-| `circuitpython/settings.toml` | pins, gear ratios, limits, step delays |
-| `circuitpython/secrets.py` | Wi-Fi credentials; not in git, copy `secrets.py.example` and edit |
+| `circuitpython/settings.toml` | pins, gear ratios, limits, step delays and board-local Wi-Fi credentials |
 | `remote_control.py` | interactive REST client for the PC (standard library only) |
 
 Required library in `circuitpython/lib/`: `adafruit_httpserver`.
@@ -47,6 +46,9 @@ Behavior:
 - Pan and tilt moves finish together.
 - Only one job runs at a time; further move/home requests get `409` until the
   state reports `busy: false`.
+- Joystick commands update independent pan/tilt speeds during a jog. Releasing
+  the joystick sends zero speeds; the firmware also stops jogging if no update
+  arrives for one second. Normal jog stops retain homing and motor power.
 
 ### Coordinates (degrees)
 
@@ -72,8 +74,9 @@ Behavior:
 
 Edit files in `circuitpython/`, then copy the changed files to `D:`.
 CircuitPython reloads automatically when a file is written. Copy only changed
-files; `D:` also holds board-only files such as `lib/`. `secrets.py` is
-untracked: create it from `secrets.py.example` and copy it to `D:` once.
+files; `D:` also holds board-only files such as `lib/`. Keep the board's
+`WIFI_SSID` and `WIFI_PASSWORD` settings private and preserve them when updating
+`settings.toml`.
 
 ### REST API
 
@@ -91,6 +94,7 @@ failure (`"pan homing failed"`, `"stopped"`, or the reason for a `400`/`409`).
 | --- | --- | --- |
 | `GET /api/v1/state` | - | `200` state |
 | `POST /api/v1/move` | `{"pan": 30, "tilt": 50}` (either key optional, numbers) | `202`; `400` for invalid input or an unhomed axis; `409` while busy |
+| `POST /api/v1/jog` | `{"pan": 0.5, "tilt": -0.5}` (both required, -1 to 1) | `202`; updates speeds during a jog, zero stops; `400` for invalid input or unhomed axes; `409` during another job |
 | `POST /api/v1/home` | `{"axis": "pan" \| "tilt" \| "both"}` (default `both`) | `202`; `400` for an invalid axis; `409` while busy |
 | `POST /api/v1/disable` | - | `200`; stops motion, de-energizes the motors and unhomes both axes |
 
@@ -99,6 +103,7 @@ Examples (replace the address):
 ```sh
 curl -H "Content-Type: application/json" -d '{"axis":"both"}' http://192.168.1.76:8080/api/v1/home
 curl -H "Content-Type: application/json" -d '{"pan":30,"tilt":50}' http://192.168.1.76:8080/api/v1/move
+curl -H "Content-Type: application/json" -d '{"pan":0.5,"tilt":-0.5}' http://192.168.1.76:8080/api/v1/jog
 curl http://192.168.1.76:8080/api/v1/state
 curl -X POST http://192.168.1.76:8080/api/v1/disable
 ```
